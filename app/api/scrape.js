@@ -3,7 +3,16 @@ import { dbConnect } from "../../lib/db.js";
 import { Word } from "../../lib/wordmodel.js";
 import cron from "node-cron";
 
+let isScraperRunning = false; // Prevent overlapping executions
+
 export const scrapeWord = async () => {
+  if (isScraperRunning) {
+    console.log("⚠️ Scraper is already running, skipping this execution...");
+    return;
+  }
+
+  isScraperRunning = true; // Lock execution
+
   console.log("✅ Scraper started...");
 
   const browser = await puppeteer.launch({
@@ -22,7 +31,7 @@ export const scrapeWord = async () => {
       timeout: 60000,
     });
 
-    // Extract all words from the list
+    // Extract words
     const words = await page.evaluate(() => {
       return Array.from(document.querySelectorAll(".topten li .word-text"))
         .map((el) => el.textContent.trim())
@@ -32,6 +41,7 @@ export const scrapeWord = async () => {
     if (!words.length) {
       console.log("❌ No words found.");
       await browser.close();
+      isScraperRunning = false;
       return;
     }
 
@@ -48,20 +58,22 @@ export const scrapeWord = async () => {
         const element = document.querySelector(".dtText");
         return element ? element.textContent.trim() : "/";
       });
+
       const rawPronunciation = await page.evaluate(() => {
-        const element = document.querySelector(".play-pron-v2"); // Adjust selector if needed
+        const element = document.querySelector(".play-pron-v2");
         return element ? element.textContent.trim() : null;
       });
 
       const pronounciation = rawPronunciation
         ? rawPronunciation.split("How")[0].trim()
         : word;
+
       if (!meaning) {
         console.log(`⚠️ No meaning found for ${word}`);
         continue;
       }
+
       const pronunciationPage = `https://howjsay.com/how-to-pronounce-${word}`;
-      console.log(pronunciationPage);
       await page.goto(pronunciationPage, { waitUntil: "domcontentloaded" });
 
       const pronunciationAudioUrl = await page.evaluate(() => {
@@ -80,7 +92,7 @@ export const scrapeWord = async () => {
 
       const existingWord = await Word.findOne({ word });
       if (!existingWord) {
-        await Word.create({ word, meaning, pronounciation,audiourl:pronunciationAudioUrl });
+        await Word.create({ word, meaning, pronounciation, audiourl: pronunciationAudioUrl });
         console.log(`✅ Saved: ${word} -> ${meaning} -> ${pronounciation}`);
       } else {
         console.log(`⚠️ Word already exists: ${word}`);
@@ -90,13 +102,15 @@ export const scrapeWord = async () => {
     console.error("🚨 Error in scraper:", error);
   } finally {
     await browser.close();
+    isScraperRunning = false; // Unlock execution
   }
 };
 
-// ✅ Call `scrapeWord` directly (No `req` or `res`)
+// Run once on startup
 scrapeWord();
 
+// Schedule scraper to run every 2 minutes
 cron.schedule("*/2 * * * *", () => {
-  console.log("🔄 Running scraper job...");
+  console.log("🔄 Running scheduled scraper job...");
   scrapeWord();
 });

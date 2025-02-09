@@ -45,12 +45,15 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-start min-h-full min-w-full bg-[#2c2c2c] text-white">
       {word ? (
-        <div className="flex flex-col justify-start items-center gap-2 h-screen w-full text-center">
-          <div
-            style={{ WebkitAppRegion: "drag" }}
-            className="flex items-center mt-2 gap-1 "
-          >
-            <div className="flex rounded-md box- justify-center overflow-x-auto h-11 w-56 border-b border-[#3650c0] shadow-[0px_0px_40px_1px_#000000] bg-[#1d1c1c] items-center">
+        <div
+          style={{ WebkitAppRegion: "drag" }}
+          className="flex flex-col justify-start items-center gap-2 h-screen w-full text-center"
+        >
+          <div className="flex items-center mt-2 gap-1 ">
+            <div
+              style={{ WebkitAppRegion: "no-drag" }}
+              className="flex rounded-md box- justify-start overflow-x-auto overflow-y-hidden h-11 w-56 border-b border-[#3650c0] shadow-[0px_0px_40px_1px_#000000] bg-[#1d1c1c] items-center whitespace-nowrap px-2 scrollbar "
+            >
               <audio ref={audioRef} src={word.audiourl} />
               <button
                 style={{ WebkitAppRegion: "no-drag" }}
@@ -79,8 +82,11 @@ export default function Home() {
               />
             </div>
           </div>
-          <div className="flex flex-col items-center w-full overflow-auto">
-            <p className="text-sm px-3  text-white">{word.meaning}</p>
+          <div
+            className="flex flex-col items-center w-full max-h-32 overflow-y-auto px-3"
+            style={{ WebkitAppRegion: "no-drag" }} // Ensures text is selectable
+          >
+            <p className="text-sm text-white">{word.meaning}</p>
           </div>
         </div>
       ) : (
