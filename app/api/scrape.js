@@ -8,7 +8,7 @@ export const scrapeWord = async () => {
 
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox","--disable-setuid-sandbox"],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   const page = await browser.newPage();
@@ -22,44 +22,69 @@ export const scrapeWord = async () => {
       timeout: 60000,
     });
 
-    const word = await page.evaluate(() => {
-      const element = document.querySelector(".topten li .word-text");
-      return element ? element.textContent.trim() : null;
+    // Extract all words from the list
+    const words = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll(".topten li .word-text"))
+        .map((el) => el.textContent.trim())
+        .filter((word) => word);
     });
 
-    if (!word) {
-      console.log("❌ No word found.");
+    if (!words.length) {
+      console.log("❌ No words found.");
       await browser.close();
       return;
     }
 
-    console.log(`✅ Extracted word: ${word}`);
-
-    await page.goto(`https://www.merriam-webster.com/dictionary/${word}`, {
-      waitUntil: "domcontentloaded",
-    });
-
-    const meaning = await page.evaluate(() => {
-      const element = document.querySelector(".dtText");
-      return element ? element.textContent.trim() : null;
-    });
-
-    if (!meaning) {
-      console.log("❌ No meaning found.");
-      await browser.close();
-      return;
-    }
-
-    console.log(`✅ Meaning: ${meaning}`);
+    console.log(`✅ Extracted words: ${words.join(", ")}`);
 
     await dbConnect();
 
-    const existingWord = await Word.findOne({ word });
-    if (!existingWord) {
-      await Word.create({ word, meaning });
-      console.log("✅ Word saved to database.");
-    } else {
-      console.log("⚠️ Word already exists.");
+    for (const word of words) {
+      await page.goto(`https://www.merriam-webster.com/dictionary/${word}`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      let meaning = await page.evaluate(() => {
+        const element = document.querySelector(".dtText");
+        return element ? element.textContent.trim() : "/";
+      });
+      const rawPronunciation = await page.evaluate(() => {
+        const element = document.querySelector(".play-pron-v2"); // Adjust selector if needed
+        return element ? element.textContent.trim() : null;
+      });
+
+      const pronounciation = rawPronunciation
+        ? rawPronunciation.split("How")[0].trim()
+        : word;
+      if (!meaning) {
+        console.log(`⚠️ No meaning found for ${word}`);
+        continue;
+      }
+      const pronunciationPage = `https://howjsay.com/how-to-pronounce-${word}`;
+      console.log(pronunciationPage);
+      await page.goto(pronunciationPage, { waitUntil: "domcontentloaded" });
+
+      const pronunciationAudioUrl = await page.evaluate(() => {
+        const audioSource = document.querySelector(".alphContain audio source");
+        return audioSource ? audioSource.getAttribute("src") : null;
+      });
+
+      if (!pronunciationAudioUrl) {
+        console.log("❌ No pronunciation audio found.");
+      } else {
+        console.log(`✅ Pronunciation Audio URL: ${pronunciationAudioUrl}`);
+      }
+
+      // Remove all content inside brackets (both () and [])
+      meaning = meaning.replace(/\([^)]*\)|\[[^\]]*\]/g, "").trim();
+
+      const existingWord = await Word.findOne({ word });
+      if (!existingWord) {
+        await Word.create({ word, meaning, pronounciation,audiourl:pronunciationAudioUrl });
+        console.log(`✅ Saved: ${word} -> ${meaning} -> ${pronounciation}`);
+      } else {
+        console.log(`⚠️ Word already exists: ${word}`);
+      }
     }
   } catch (error) {
     console.error("🚨 Error in scraper:", error);

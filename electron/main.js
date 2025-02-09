@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 
 // Define __dirname manually
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.whenReady().then(() => {
   mainWindow = new BrowserWindow({
     width: 250,

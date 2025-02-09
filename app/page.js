@@ -3,9 +3,19 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Loader from "./components/loader";
 import Image from "next/image";
-
+import { useRef } from "react";
 export default function Home() {
   const [word, setWord] = useState(null);
+  const audioRef = useRef(null);
+
+  const playAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.load(); // Forces reload
+      audioRef.current
+        .play()
+        .catch((error) => console.error("Playback error:", error));
+    }
+  };
 
   async function fetchWord() {
     try {
@@ -20,6 +30,7 @@ export default function Home() {
 
   async function getNewWord() {
     try {
+      console.log("clicked");
       const res = await axios.post("/api/newword");
       const data = res.data;
       setWord(data);
@@ -31,26 +42,45 @@ export default function Home() {
   useEffect(() => {
     fetchWord(); // Load the last used word
   }, []);
-
   return (
-    <div className="flex flex-col items-center justify-start h-screen min-w-full bg-[#161718] text-white" >
+    <div className="flex flex-col items-center justify-start min-h-full min-w-full bg-[#2c2c2c] text-white">
       {word ? (
-        <div className="h-screen w-full rounded-lg text-center">
-          <div style={{ WebkitAppRegion: "drag" }} className="flex flex-col top-0 items-center border-b border-b-[#02357d] justify-center h-9 w-full   bg-[#1b1a1a]">
-            <h2 className="capitalize text-base font-semibold  text-[#c6c6c6]">
-              {word.word}
-            </h2>
+        <div className="flex flex-col justify-start items-center gap-2 h-screen w-full text-center">
+          <div
+            style={{ WebkitAppRegion: "drag" }}
+            className="flex items-center mt-2 gap-1 "
+          >
+            <div className="flex rounded-md box- justify-center overflow-x-auto h-11 w-56 border-b border-[#3650c0] shadow-[0px_0px_40px_1px_#000000] bg-[#1d1c1c] items-center">
+              <audio ref={audioRef} src={word.audiourl} />
+              <button
+                style={{ WebkitAppRegion: "no-drag" }}
+                onClick={playAudio}
+                className="cursor-pointer p-2  text-white"
+              >
+                🔊
+              </button>
+              <h2 className="ml-2 capitalize text-base font-semibold  text-[#ffffff]">
+                {word.word}
+              </h2>
+              <span className="italic ml-2 text-base font-semibold  text-[#c2bfbf]">
+                {word.pronounciation}
+              </span>
+            </div>
+            <div className="flex ">
+              <Image
+                className="cursor-pointer"
+                src="/refresh.png"
+                alt="Refresh"
+                cursor="pointer"
+                width={15}
+                height={15}
+                onClick={getNewWord}
+                style={{ WebkitAppRegion: "no-drag" }}
+              />
+            </div>
           </div>
-          <p className="text-sm m-3 text-white">{word.meaning}</p>
-          <div className="flex absolute top-2 right-2">
-            <Image
-              src="/refresh.png"
-              alt="Refresh"
-              width={20}
-              height={20}
-              onClick={getNewWord}
-              style={{ WebkitAppRegion: "drag" }}
-            />
+          <div className="flex flex-col items-center w-full overflow-auto">
+            <p className="text-sm px-3  text-white">{word.meaning}</p>
           </div>
         </div>
       ) : (
