@@ -3,13 +3,12 @@ import { Word } from "../../../lib/wordmodel.js";
 
 export async function POST(req, res) {
   await dbConnect();
-  const word = await Word.findOne().sort({ createdAt: -1 });
-  if (!word) return res.status(404).json({ error: "No words in database" });
-  console.log("word deleted:",word);
-  await Word.findByIdAndDelete(word._id);
-  const newword = await Word.findOne().sort({ createdAt: -1 });
-  if (!newword) return res.status(404).json({ error: "No words in database" });
-  return new Response(JSON.stringify(newword), {
+  const randomWord = await Word.aggregate([{ $sample: { size: 1 } }]);
+
+  if (randomWord.length === 0) {
+    return res.status(404).json({ error: "No words in database" });
+  }
+  return new Response(JSON.stringify(randomWord), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
