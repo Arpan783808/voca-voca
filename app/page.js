@@ -47,7 +47,7 @@ export default function Home() {
           <div className="flex items-center mt-2 gap-1">
             <div
               style={{ WebkitAppRegion: "no-drag" }}
-              className="flex rounded-md justify-start overflow-x-auto overflow-y-hidden h-11 w-56 border-b border-[#3650c0] shadow-[0px_0px_40px_1px_#000000] bg-[#1d1c1c] items-center whitespace-nowrap px-2"
+              className="flex rounded-md justify-start overflow-x-auto overflow-y-hidden h-11 w-56 border-b border-[#3650c0] shadow-[0px_0px_40px_1px_#000000] bg-[#1d1c1c] items-center whitespace-nowrap px-2 scrollbar"
             >
               {word.audiourl && <audio ref={audioRef} src={word.audiourl} />}
               {word.audiourl && (
